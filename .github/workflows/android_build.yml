@@ -1,1 +1,42 @@
-Workflow dosyasını doğru dizine taşı
+name: Build CJ Assistant APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git zip unzip openjdk-11-jdk python3-pip python3-setuptools python3-venv
+          pip install --upgrade pip
+          pip install Cython buildozer python-for-android
+
+      - name: Initialize buildozer if not exists
+        run: |
+          if [ ! -f buildozer.spec ]; then buildozer init; fi
+          sed -i 's/requirements = python3/requirements = python3,kivy,gtts/' buildozer.spec || true
+          sed -i 's/# android.permissions = INTERNET/android.permissions = INTERNET/' buildozer.spec || true
+
+      - name: Build APK
+        run: buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: cj-assistant-apk
+          path: bin/*.apk
